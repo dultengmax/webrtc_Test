@@ -1,0 +1,15 @@
+# Dockerfile.frontend
+
+FROM nginx:alpine
+
+# Salin konfigurasi Nginx kustom Anda
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Salin file frontend Anda ke direktori yang disajikan Nginx
+COPY public /usr/share/nginx/html
+
+# Exposure port Nginx (Coolify akan memetakan ini ke 80/443 eksternal)
+EXPOSE 80
+
+# Perintah default Nginx akan berjalan secara otomatis
+CMD ["nginx", "-g", "daemon off;"]

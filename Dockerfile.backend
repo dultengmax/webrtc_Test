@@ -1,16 +1,20 @@
 # Dockerfile.backend
+
 FROM node:18-alpine
 
 WORKDIR /app
 
+# Salin package.json dan package-lock.json untuk menginstal dependensi
 COPY package*.json ./
-RUN npm install express ws 
+
+# Instal dependensi (express dan ws)
+RUN npm install express ws
+
+# Salin semua file kode aplikasi
 COPY . .
 
-# Exposure port. Sesuaikan dengan PORT di server.js (misalnya 80 atau 443)
-EXPOSE 80
+# Exposure port yang digunakan oleh server Node.js (internal)
+EXPOSE 8080
 
-# Jika menggunakan HTTPS, pastikan folder certs ada dan di-mount
-# RUN mkdir -p /app/certs
-
+# Perintah untuk menjalankan aplikasi ketika container dimulai
 CMD ["node", "server.js"]

@@ -1,16 +1,9 @@
+// public/client.js
+
 const startButton = document.getElementById('startButton');
 const stopButton = document.getElementById('stopButton');
 const statusDiv = document.getElementById('status');
 const remoteAudio = document.getElementById('remoteAudio');
-
-// public/client.js
-
-// Tentukan protokol WebSocket berdasarkan protokol halaman
-const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-// URL WebSocket langsung ke host dan port server Node.js
-// Diasumsikan server Node.js akan berjalan di port standar (80 atau 443)
-// Jika Anda menjalankan di port lain, tambahkan ":port"
-signalingSocket = new WebSocket(wsProtocol + '//' + window.location.host);
 
 let localStream;        // Stream dari mikrofon lokal
 let peerConnection;     // RTCPeerConnection object
@@ -21,7 +14,6 @@ const configuration = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        // Anda bisa menambahkan STUN server lain atau TURN server di sini jika perlu
     ]
 };
 
@@ -38,22 +30,20 @@ async function startStreaming() {
         statusDiv.textContent = 'Status: Microphone accessed.';
 
         // 2. Inisialisasi WebSocket untuk signaling
-        signalingSocket = new WebSocket('ws://localhost:8080');
+        // Coolify akan menangani SSL (HTTPS/WSS) dan meneruskan ke Nginx
+        // Nginx akan meneruskan ke backend Node.js melalui /ws/ path
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        signalingSocket = new WebSocket(wsProtocol + '//' + window.location.host + '/ws/');
 
         signalingSocket.onopen = () => {
             console.log('Connected to signaling server.');
             statusDiv.textContent = 'Status: Connected to signaling server.';
-            // Setelah terhubung ke signaling server, kita bisa membuat PeerConnection
-            createPeerConnection();
-            // Tambahkan track audio dari stream lokal ke peer connection
+            createPeerConnection(); // Buat PeerConnection setelah signaling siap
             localStream.getTracks().forEach(track => {
                 peerConnection.addTrack(track, localStream);
                 console.log('Added local audio track to peer connection.');
             });
-
-            // Kirim offer secara otomatis setelah terhubung ke signaling server
-            // Ini akan membuat peer pertama sebagai "offerer"
-            createOfferAndSend();
+            createOfferAndSend(); // Peer pertama membuat offer
         };
 
         signalingSocket.onmessage = async event => {
@@ -61,7 +51,7 @@ async function startStreaming() {
             console.log('Received signaling message type:', message.type);
 
             if (!peerConnection) {
-                // Jika peerConnection belum dibuat, buat sekarang (ini akan terjadi pada "answerer")
+                // Buat peerConnection jika belum ada (ini untuk peer kedua/answerer)
                 createPeerConnection();
                 localStream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, localStream);
@@ -71,7 +61,6 @@ async function startStreaming() {
 
             try {
                 if (message.type === 'offer') {
-                    // Menerima offer dari peer lain, set remote description dan kirim answer
                     console.log('Received offer, setting remote description...');
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(message));
                     console.log('Creating answer...');
@@ -82,14 +71,12 @@ async function startStreaming() {
                     signalingSocket.send(JSON.stringify(answer));
                     statusDiv.textContent = 'Status: Received offer, sent answer.';
                 } else if (message.type === 'answer') {
-                    // Menerima answer dari peer lain, set remote description
                     console.log('Received answer, setting remote description...');
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(message));
                     statusDiv.textContent = 'Status: Received answer.';
                 } else if (message.type === 'candidate') {
-                    // Menerima ICE candidate
                     console.log('Received ICE candidate, adding...');
-                    if (message.candidate) { // Pastikan candidate ada
+                    if (message.candidate) {
                         await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
                         statusDiv.textContent = 'Status: Added ICE candidate.';
                     }
@@ -102,23 +89,22 @@ async function startStreaming() {
         signalingSocket.onclose = () => {
             console.log('Disconnected from signaling server.');
             statusDiv.textContent = 'Status: Disconnected from signaling server.';
-            stopStreaming(); // Bersihkan jika signaling terputus
+            stopStreaming();
         };
 
         signalingSocket.onerror = error => {
             console.error('Signaling socket error:', error);
             statusDiv.textContent = 'Status: Signaling error.';
-            stopStreaming(); // Bersihkan jika ada error signaling
+            stopStreaming();
         };
 
     } catch (error) {
         console.error('Error starting streaming:', error);
         statusDiv.textContent = `Status: Error - ${error.message}`;
-        stopStreaming(); // Clean up on error
+        stopStreaming();
     }
 }
 
-// Fungsi terpisah untuk membuat dan mengirim offer
 async function createOfferAndSend() {
     try {
         console.log('Creating offer...');
@@ -142,7 +128,6 @@ function createPeerConnection() {
     peerConnection = new RTCPeerConnection(configuration);
     console.log('RTCPeerConnection created.');
 
-    // Ketika ICE candidate tersedia, kirim ke peer lain melalui signaling server
     peerConnection.onicecandidate = event => {
         if (event.candidate) {
             console.log('Found ICE candidate, sending to signaling server.');
@@ -150,7 +135,6 @@ function createPeerConnection() {
         }
     };
 
-    // Ketika track (audio/video) diterima dari peer lain, tambahkan ke elemen audio
     peerConnection.ontrack = event => {
         console.log('Received remote track. Stream:', event.streams[0]);
         if (event.streams && event.streams[0]) {
@@ -162,33 +146,25 @@ function createPeerConnection() {
         }
     };
 
-    // Monitor status koneksi peer
     peerConnection.onconnectionstatechange = () => {
         console.log('Peer connection state changed:', peerConnection.connectionState);
         statusDiv.textContent = `Status: Peer connection ${peerConnection.connectionState}`;
         if (peerConnection.connectionState === 'failed' || peerConnection.connectionState === 'disconnected') {
             console.warn('Peer connection failed or disconnected.');
-            // Mungkin perlu logika re-koneksi di sini
         } else if (peerConnection.connectionState === 'connected') {
             console.log('Peer connection established!');
         }
     };
 
-    // Monitor status ICE connection
     peerConnection.oniceconnectionstatechange = () => {
         console.log('ICE connection state changed:', peerConnection.iceConnectionState);
         statusDiv.textContent = `Status: ICE connection ${peerConnection.iceConnectionState}`;
     };
 
-    // Event onnegotiationneeded dipicu ketika perlu ada pertukaran SDP baru
-    // Ini biasanya dipicu saat addTrack() atau removeTrack() dipanggil
     peerConnection.onnegotiationneeded = async () => {
-        console.log('onnegotiationneeded triggered. Creating offer...');
-        // Tidak perlu langsung membuat offer di sini karena kita sudah punya logika di onopen signaling socket
-        // Ini adalah fallback atau untuk skenario dinamis lainnya
+        console.log('onnegotiationneeded triggered.');
     };
 }
-
 
 function stopStreaming() {
     startButton.disabled = false;

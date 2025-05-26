@@ -1,21 +1,23 @@
 version: '3.8'
 
 services:
-  app: # Nama service Anda, bisa diganti jadi 'webrtc-server' atau apapun
+  # Service untuk backend Node.js signaling server
+  backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    ports:
-      # Map port 80 (dari container) ke port 80 (di host)
-      # Jika Anda menggunakan HTTPS (port 443), ubah ini menjadi "443:443"
-      - "80:80"
+    # Port 8080 dari backend hanya perlu diakses secara internal oleh Nginx,
+    # jadi tidak perlu dipublikasikan langsung ke host (`ports` tidak perlu di sini)
     restart: always
-    # UNCOMMENT bagian ini jika Anda menggunakan HTTPS/WSS dan punya sertifikat
-    # environment:
-    #   - PORT=443 # Jika Anda ingin server Node.js mendengarkan di port 443
-    #   - SSL_KEY_PATH=/app/certs/privkey.pem
-    #   - SSL_CERT_PATH=/app/certs/fullchain.pem
-    # volumes:
-    #   # Mount folder sertifikat SSL dari host ke dalam container
-    #   # Ganti /path/to/your/certs dengan lokasi sertifikat SSL di host Anda
-    #   - /path/to/your/certs:/app/certs:ro
+
+  # Service untuk frontend Nginx yang menyajikan file statis dan proxy WSS
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    # Coolify akan secara otomatis memetakan port 80/443 dari container ini
+    # ke port 80/443 di host saat Anda menambahkan domain di dashboard Coolify.
+    # Tidak perlu "ports: - "80:80"" atau "- "443:443"" di sini.
+    depends_on:
+      - backend # Pastikan backend berjalan sebelum frontend
+    restart: always

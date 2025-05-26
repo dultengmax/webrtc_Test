@@ -274,59 +274,21 @@
 // });
 
 
+// server.js
+
 const WebSocket = require('ws');
-const express = require('express');
-const path = require('path');
-const http = require('http'); // Untuk HTTP
-const https = require('https'); // Untuk HTTPS
-const fs = require('fs'); // Untuk membaca sertifikat
+const http = require('http'); // Node.js http server untuk WebSocket
+const express = require('express'); // Express untuk rute kosong, diperlukan jika tidak ada https
 
 const app = express();
+const server = http.createServer(app); // Server HTTP dasar yang akan digunakan oleh WebSocket
 
-// Sajikan file statis dari folder 'public'
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Rute default untuk index.html
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// --- Konfigurasi Server HTTP atau HTTPS ---
-let server;
-const PORT = process.env.PORT || 80; // Default ke port 80 untuk HTTP, bisa diubah ke 443 untuk HTTPS
-
-// Contoh untuk HTTPS (Jika Anda punya sertifikat)
-// UNCOMMENT bagian ini jika Anda ingin menggunakan HTTPS/WSS
-/*
-const privateKeyPath = process.env.SSL_KEY_PATH || '/app/certs/privkey.pem';
-const certificatePath = process.env.SSL_CERT_PATH || '/app/certs/fullchain.pem';
-
-try {
-    const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
-    const certificate = fs.readFileSync(certificatePath, 'utf8');
-    const credentials = { key: privateKey, cert: certificate };
-    server = https.createServer(credentials, app);
-    console.log(`HTTPS server configured. Listening on port ${PORT}`);
-} catch (e) {
-    console.warn('SSL certificates not found or invalid. Falling back to HTTP.');
-    console.error('SSL Error:', e.message);
-    server = http.createServer(app);
-    console.log(`HTTP server configured. Listening on port ${PORT}`);
-}
-*/
-
-// Contoh untuk HTTP (default jika HTTPS tidak diaktifkan)
-if (!server) { // Jika server HTTPS belum dibuat
-    server = http.createServer(app);
-    console.log(`HTTP server configured. Listening on port ${PORT}`);
-}
-
-
-// --- Konfigurasi WebSocket Server ---
 const wss = new WebSocket.Server({ server });
 
+const PORT = process.env.PORT || 8080; // Port default 8080
+
 server.listen(PORT, () => {
-    console.log(`Server running on ${server.isSecure ? 'HTTPS' : 'HTTP'}://0.0.0.0:${PORT}`);
+    console.log(`Signaling server listening on http://0.0.0.0:${PORT}`);
 });
 
 wss.on('connection', ws => {
@@ -341,7 +303,6 @@ wss.on('connection', ws => {
             return;
         }
 
-        // Broadcast pesan ke semua klien lain
         wss.clients.forEach(client => {
             if (client !== ws && client.readyState === WebSocket.OPEN) {
                 client.send(JSON.stringify(parsedMessage));
