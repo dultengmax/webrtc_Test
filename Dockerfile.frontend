@@ -1,15 +1,21 @@
 # Dockerfile.frontend
 
+# Menggunakan image Nginx terbaru berbasis Alpine Linux.
+# Nginx adalah web server yang efisien untuk menyajikan file statis dan reverse proxy.
 FROM nginx:alpine
 
-# Salin konfigurasi Nginx kustom Anda
+# Menyalin file konfigurasi Nginx kustom Anda ke lokasi default konfigurasi Nginx di dalam container.
+# File ini akan menimpa konfigurasi default Nginx.
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Salin file frontend Anda ke direktori yang disajikan Nginx
+# Menyalin semua file frontend (dari folder 'public') ke direktori yang disajikan Nginx.
+# Ini adalah lokasi default di mana Nginx mencari file web.
 COPY public /usr/share/nginx/html
 
-# Exposure port Nginx (Coolify akan memetakan ini ke 80/443 eksternal)
+# Menginformasikan Docker bahwa container akan mendengarkan di port 80 (port HTTP standar).
+# Coolify akan memetakan ini ke port 80/443 eksternal dan mengelola SSL.
 EXPOSE 80
 
-# Perintah default Nginx akan berjalan secara otomatis
+# Perintah default untuk menjalankan Nginx di foreground.
+# 'daemon off;' mencegah Nginx berjalan sebagai daemon, yang diperlukan untuk Docker.
 CMD ["nginx", "-g", "daemon off;"]

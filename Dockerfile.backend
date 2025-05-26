@@ -1,20 +1,29 @@
 # Dockerfile.backend
 
+# Menggunakan image Node.js LTS (Long Term Support) berbasis Alpine Linux.
+# Alpine adalah distribusi Linux yang sangat ringan, ideal untuk image Docker.
 FROM node:18-alpine
 
+# Menetapkan direktori kerja di dalam container.
+# Semua perintah selanjutnya akan dieksekusi relatif terhadap direktori ini.
 WORKDIR /app
 
-# Salin package.json dan package-lock.json untuk menginstal dependensi
+# Menyalin file package.json dan package-lock.json ke direktori kerja.
+# Ini dilakukan terlebih dahulu untuk memanfaatkan caching Docker layer.
+# Jika file-file ini tidak berubah, Docker tidak perlu menginstal ulang dependensi.
 COPY package*.json ./
 
-# Instal dependensi (express dan ws)
+# Menginstal dependensi Node.js.
+# 'express' dan 'ws' adalah dependensi yang digunakan oleh server.js.
 RUN npm install express ws
 
-# Salin semua file kode aplikasi
+# Menyalin sisa kode aplikasi dari direktori host ke direktori kerja di container.
 COPY . .
 
-# Exposure port yang digunakan oleh server Node.js (internal)
+# Menginformasikan Docker bahwa container akan mendengarkan di port 8080.
+# Ini adalah port internal container, bukan port yang terekspos ke host secara langsung.
 EXPOSE 8080
 
-# Perintah untuk menjalankan aplikasi ketika container dimulai
+# Perintah yang akan dieksekusi saat container dimulai.
+# Ini akan menjalankan server.js menggunakan Node.js.
 CMD ["node", "server.js"]
