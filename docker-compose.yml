@@ -1,23 +1,23 @@
-version: '3.8'
+version: '3.8' # Versi Docker Compose syntax
 
 services:
-  # Service untuk backend Node.js signaling server
+  # Definisi service untuk backend Node.js signaling server
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
-    # Port 8080 dari backend hanya perlu diakses secara internal oleh Nginx,
-    # jadi tidak perlu dipublikasikan langsung ke host (`ports` tidak perlu di sini)
-    restart: always
+      context: . # Konteks build adalah direktori saat ini (root proyek)
+      dockerfile: Dockerfile.backend # Menggunakan Dockerfile.backend untuk membangun image
+    # Catatan: Port 8080 dari backend tidak perlu dipublikasikan langsung ke host
+    # karena hanya akan diakses secara internal oleh service 'frontend' (Nginx).
+    restart: always # Selalu restart container jika berhenti secara tidak terduga
 
-  # Service untuk frontend Nginx yang menyajikan file statis dan proxy WSS
+  # Definisi service untuk frontend Nginx
   frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    # Coolify akan secara otomatis memetakan port 80/443 dari container ini
-    # ke port 80/443 di host saat Anda menambahkan domain di dashboard Coolify.
-    # Tidak perlu "ports: - "80:80"" atau "- "443:443"" di sini.
+      context: . # Konteks build adalah direktori saat ini
+      dockerfile: Dockerfile.frontend # Menggunakan Dockerfile.frontend untuk membangun image
+    # Catatan: Port 80 dan 443 dari container ini akan secara otomatis dipetakan
+    # ke port 80 dan 443 di host oleh Coolify saat Anda menambahkan domain.
+    # Tidak perlu mendeklarasikan 'ports' di sini.
     depends_on:
-      - backend # Pastikan backend berjalan sebelum frontend
-    restart: always
+      - backend # Memastikan service 'backend' (Node.js) dimulai sebelum 'frontend' (Nginx)
+    restart: always # Selalu restart container jika berhenti secara tidak terduga
