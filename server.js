@@ -1,60 +1,45 @@
-// server.js
-
+// server.js (contoh potongan untuk HTTPS/WSS, sesuaikan path sertifikat)
 const WebSocket = require('ws');
-const http = require('http'); // Digunakan untuk membuat server HTTP dasar untuk WebSocket
-const express = require('express'); // Express digunakan untuk membuat aplikasi HTTP dasar
+const express = require('express');
+const path = require('path');
+const http = require('http');
+const https = require('https'); // Diperlukan untuk HTTPS
+const fs = require('fs');       // Diperlukan untuk membaca sertifikat
 
 const app = express();
-// Membuat server HTTP dasar yang akan digunakan oleh WebSocket.
-// Ini diperlukan agar WebSocket dapat berjalan di atas protokol HTTP.
-const server = http.createServer(app);
+app.use(express.static(path.join(__dirname, 'public'))); // Sajikan file statis
 
-// Membuat instance WebSocket Server di atas server HTTP yang sudah ada.
+// Konfigurasi HTTPS/WSS
+// Anda perlu memastikan file-file ini ada di dalam container Docker Anda
+// Misalnya, melalui volume mount di docker-compose.yml
+const privateKeyPath = process.env.SSL_KEY_PATH || '/app/certs/privkey.pem';
+const certificatePath = process.env.SSL_CERT_PATH || '/app/certs/fullchain.pem';
+
+let server;
+const PORT = process.env.PORT || 443; // Port 443 untuk HTTPS standar
+
+try {
+    const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
+    const certificate = fs.readFileSync(certificatePath, 'utf8');
+    const credentials = { key: privateKey, cert: certificate };
+    server = https.createServer(credentials, app);
+    console.log(`HTTPS server configured. Listening on port ${PORT}`);
+} catch (e) {
+    console.warn('SSL certificates not found or invalid. Falling back to HTTP on port 80.');
+    console.error('SSL Error:', e.message);
+    // Jika SSL gagal, bisa fallback ke HTTP di port 80 (jika diinginkan)
+    server = http.createServer(app);
+    const HTTP_PORT = process.env.HTTP_PORT || 80;
+    server.listen(HTTP_PORT, () => {
+         console.log(`HTTP server configured. Listening on port ${HTTP_PORT}`);
+    });
+    return; // Hentikan eksekusi lebih lanjut jika ingin hanya HTTP
+}
+
 const wss = new WebSocket.Server({ server });
 
-// Menentukan port untuk server signaling.
-// Menggunakan process.env.PORT memungkinkan Coolify untuk mengkonfigurasi port.
-// Default ke 8080 jika variabel lingkungan tidak disetel.
-const PORT = process.env.PORT || 8080;
-
-// Server mulai mendengarkan koneksi masuk di port yang ditentukan.
 server.listen(PORT, () => {
-    console.log(`Server signaling mendengarkan di http://0.0.0.0:${PORT}`);
+    console.log(`Server running on <span class="math-inline">\{server\.isSecure ? 'HTTPS' \: 'HTTP'\}\://0\.0\.0\.0\:</span>{PORT}`);
 });
 
-// Event handler ketika klien baru terhubung ke server WebSocket.
-wss.on('connection', ws => {
-    console.log('Klien terhubung. Total klien:', wss.clients.size);
-
-    // Event handler ketika menerima pesan dari klien.
-    ws.on('message', message => {
-        let parsedMessage;
-        try {
-            // Mencoba mem-parse pesan sebagai JSON.
-            parsedMessage = JSON.parse(message);
-        } catch (e) {
-            // Log error jika pesan bukan JSON yang valid.
-            console.error('Gagal mem-parse pesan:', message.toString(), e);
-            return; // Hentikan pemrosesan pesan yang tidak valid.
-        }
-
-        // Meneruskan pesan ke semua klien lain yang terhubung.
-        // Ini adalah mekanisme signaling sederhana untuk WebRTC.
-        wss.clients.forEach(client => {
-            // Pastikan klien bukan pengirim pesan dan koneksinya terbuka.
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(parsedMessage)); // Kirim pesan sebagai string JSON.
-            }
-        });
-    });
-
-    // Event handler ketika klien terputus dari server WebSocket.
-    ws.on('close', () => {
-        console.log('Klien terputus. Total klien:', wss.clients.size);
-    });
-
-    // Event handler ketika terjadi error pada koneksi WebSocket.
-    ws.on('error', error => {
-        console.error('Error WebSocket pada koneksi:', error);
-    });
-});
+// ... (logic WebSocket signaling Anda yang sudah ada) ...

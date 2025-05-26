@@ -44,8 +44,10 @@ async function startStreaming() {
         // Coolify akan menangani SSL (HTTPS/WSS) dan meneruskan ke Nginx.
         // Nginx akan meneruskan ke backend Node.js melalui '/ws/' path.
         // Ini memastikan koneksi aman (WSS) jika halaman diakses via HTTPS.
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        signalingSocket = new WebSocket(wsProtocol + '//' + window.location.host + '/ws/');
+ // public/client.js (contoh potongan)
+const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+// Langsung ke host, Coolify akan memetakan port 80 atau 443 ke container Anda
+signalingSocket = new WebSocket(wsProtocol + '//' + window.location.host);
 
         // Event handler ketika koneksi WebSocket terbuka
         signalingSocket.onopen = () => {

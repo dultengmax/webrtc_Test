@@ -1,23 +1,25 @@
-version: '3.8' # Versi Docker Compose syntax
+# docker-compose.yml
+version: '3.8'
 
 services:
-  # Definisi service untuk backend Node.js signaling server
-  backend:
+  app:
     build:
-      context: . # Konteks build adalah direktori saat ini (root proyek)
-      dockerfile: Dockerfile.backend # Menggunakan Dockerfile.backend untuk membangun image
-    # Catatan: Port 8080 dari backend tidak perlu dipublikasikan langsung ke host
-    # karena hanya akan diakses secara internal oleh service 'frontend' (Nginx).
-    restart: always # Selalu restart container jika berhenti secara tidak terduga
-
-  # Definisi service untuk frontend Nginx
-  frontend:
-    build:
-      context: . # Konteks build adalah direktori saat ini
-      dockerfile: Dockerfile.frontend # Menggunakan Dockerfile.frontend untuk membangun image
-    # Catatan: Port 80 dan 443 dari container ini akan secara otomatis dipetakan
-    # ke port 80 dan 443 di host oleh Coolify saat Anda menambahkan domain.
-    # Tidak perlu mendeklarasikan 'ports' di sini.
-    depends_on:
-      - backend # Memastikan service 'backend' (Node.js) dimulai sebelum 'frontend' (Nginx)
-    restart: always # Selalu restart container jika berhenti secara tidak terduga
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      # Map port 80 (HTTP) atau 443 (HTTPS) dari container ke host
+      # Sesuaikan dengan port yang digunakan di server.js
+      - "80:80"  # Untuk HTTP
+      # - "443:443" # Untuk HTTPS, uncomment ini dan komen baris di atas
+    restart: always
+    # UNCOMMENT BAGIAN INI UNTUK HTTPS/WSS:
+    # environment:
+    #   - PORT=443 # Biarkan server.js mendengarkan di 443
+    #   - SSL_KEY_PATH=/app/certs/privkey.pem
+    #   - SSL_CERT_PATH=/app/certs/fullchain.pem
+    # volumes:
+    #   # Mount folder sertifikat SSL dari host ke dalam container
+    #   # Lokasi ini harus sesuai dengan yang diakses oleh server.js
+    #   # Anda harus memastikan sertifikat ini ada di host Anda
+    #   - /etc/letsencrypt/live/yourdomain.com:/app/certs:ro
+    #   - /etc/letsencrypt/archive/yourdomain.com:/app/certs-archive:ro # Opsional untuk archive
