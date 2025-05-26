@@ -1,0 +1,16 @@
+# Dockerfile.backend
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install express ws 
+COPY . .
+
+# Exposure port. Sesuaikan dengan PORT di server.js (misalnya 80 atau 443)
+EXPOSE 80
+
+# Jika menggunakan HTTPS, pastikan folder certs ada dan di-mount
+# RUN mkdir -p /app/certs
+
+CMD ["node", "server.js"]

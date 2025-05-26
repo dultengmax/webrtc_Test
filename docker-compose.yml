@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  app: # Nama service Anda, bisa diganti jadi 'webrtc-server' atau apapun
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      # Map port 80 (dari container) ke port 80 (di host)
+      # Jika Anda menggunakan HTTPS (port 443), ubah ini menjadi "443:443"
+      - "80:80"
+    restart: always
+    # UNCOMMENT bagian ini jika Anda menggunakan HTTPS/WSS dan punya sertifikat
+    # environment:
+    #   - PORT=443 # Jika Anda ingin server Node.js mendengarkan di port 443
+    #   - SSL_KEY_PATH=/app/certs/privkey.pem
+    #   - SSL_CERT_PATH=/app/certs/fullchain.pem
+    # volumes:
+    #   # Mount folder sertifikat SSL dari host ke dalam container
+    #   # Ganti /path/to/your/certs dengan lokasi sertifikat SSL di host Anda
+    #   - /path/to/your/certs:/app/certs:ro
